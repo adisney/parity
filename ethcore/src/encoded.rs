@@ -23,6 +23,9 @@
 //! When the entirety of the object is needed, it's better to upgrade it to a fully
 //! decoded object where parts like the hash can be saved.
 
+//#[macro_use]
+//extern crate ethcore;
+
 use block::Block as FullBlock;
 use header::{BlockNumber, Header as FullHeader};
 use transaction::UnverifiedTransaction;
@@ -126,6 +129,10 @@ impl Body {
 	/// Get a borrowed view of the data within.
 	#[inline]
 	pub fn view(&self) -> BodyView { view!(BodyView, &self.0) }
+
+	/// Get a borrowed view of the block data within.
+	#[inline]
+	pub fn block_view(&self) -> views::BlockView { view!(BlockView, &self.0) }
 
 	/// Fully decode this block body.
 	pub fn decode(&self) -> (Vec<UnverifiedTransaction>, Vec<FullHeader>) {

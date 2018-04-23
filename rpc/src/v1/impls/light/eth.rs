@@ -34,6 +34,7 @@ use ethcore::encoded;
 use ethcore::executed::{Executed, CallError};
 use ethcore::filter::Filter as EthcoreFilter;
 use ethcore::ids::BlockId;
+use ethcore::views::BlockView;
 use sync::LightSync;
 use hash::{KECCAK_NULL_RLP, KECCAK_EMPTY_LIST_RLP};
 use ethereum_types::U256;
@@ -535,8 +536,10 @@ impl<T: LightChainClient + 'static> Filterable for EthClient<T> {
 		self.client.block_hash(id).map(Into::into)
 	}
 
-	fn block_body(&self, _id: BlockId) -> Result<Option<encoded::Body>> {
-		Err(errors::light_unimplemented(None))
+	fn block_view(&self, id: BlockId) -> BoxFuture<Option<BlockView>> {
+        Box::new(self.fetcher()
+            .block(id)
+            .map(|block| Some(block.view())))
 	}
 
 	fn pending_transactions_hashes(&self) -> Vec<::ethereum_types::H256> {
