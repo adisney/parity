@@ -22,10 +22,10 @@ use std::result;
 
 use ethcore::miner::{self, MinerService};
 use ethcore::filter::Filter as EthcoreFilter;
-use ethcore::client::{BlockChainClient, BlockId, BlockInfo};
+use ethcore::client::{BlockChainClient, BlockId};
 use ethcore::executed::{Executed, CallError};
 use ethcore::call_analytics::CallAnalytics;
-use ethcore::views::BlockView;
+use ethcore::encoded;
 use ethereum_types::H256;
 use parking_lot::Mutex;
 
@@ -46,7 +46,7 @@ pub trait Filterable {
 	fn block_hash(&self, id: BlockId) -> Option<RpcH256>;
 
 	/// Get a block body by block id.
-	fn block_view(&self, id: BlockId) -> BoxFuture<Option<BlockView>>;
+	fn block_body(&self, id: BlockId) -> BoxFuture<Option<encoded::Body>>;
 
 	/// pending transaction hashes at the given block.
 	fn pending_transactions_hashes(&self) -> Vec<H256>;
@@ -94,8 +94,8 @@ impl<C, M> Filterable for EthFilterClient<C, M> where
 		self.client.block_hash(id).map(Into::into)
 	}
 
-	fn block_view(&self, id: BlockId) -> BoxFuture<Option<BlockView>> {
-		Box::new(future::ok(self.client.block(id).and_then(|block| Some(block.view()))))
+	fn block_body(&self, id: BlockId) -> BoxFuture<Option<encoded::Body>> {
+		Box::new(future::ok(self.client.block_body(id)))
 	}
 
 	fn pending_transactions_hashes(&self) -> Vec<H256> {
@@ -259,14 +259,14 @@ impl<T: Filterable + Send + Sync + 'static> EthFilter for T {
                     let return_data = executed
                         .into_iter()
                         .map(|(block_id, output_bytes)| {
-                            self.block_view(block_id)
-                                .map(|view| {
-                                    match view {
+                            self.block_body(block_id)
+                                .map(|body| {
+                                    match body {
                                         None => vec![],
-                                        Some(view) => {
+                                        Some(body) => {
                                             output_bytes
                                                 .into_iter()
-                                                .zip(view.transaction_hashes())
+                                                .zip(body.transaction_hashes())
                                                 .map(|(output_bytes, transaction_hash)| {
                                                     ReturnData {
                                                         transaction_hash,
